@@ -1,5 +1,6 @@
 import os
 import boto3
+import time
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minio")
@@ -14,8 +15,15 @@ s3_client = boto3.client(
 )
 
 
-def ensure_bucket():
-    try:
-        s3_client.head_bucket(Bucket=MINIO_BUCKET)
-    except:
-        s3_client.create_bucket(Bucket=MINIO_BUCKET)
+def ensure_bucket(retries=5, delay=3):
+    for _ in range(retries):
+        try:
+            s3_client.head_bucket(Bucket=MINIO_BUCKET)
+            return
+        except s3_client.exceptions.NoSuchBucket:
+            s3_client.create_bucket(Bucket=MINIO_BUCKET)
+            return
+        except Exception as e:
+            print("MinIO not ready yet, retrying...", e)
+            time.sleep(delay)
+    raise Exception("Could not ensure MinIO bucket.")

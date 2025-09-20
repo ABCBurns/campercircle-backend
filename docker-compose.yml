@@ -12,6 +12,10 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U camper"]
+      interval: 5s
+      retries: 5
 
   minio:
     image: minio/minio:latest
@@ -19,12 +23,16 @@ services:
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
-    command: server /data --console-address ":9001"
+    command: server /data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"  # API
+      - "9001:9001"  # WebUI
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      retries: 5
 
   backend:
     build: ./backend
@@ -35,12 +43,16 @@ services:
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: camper-bucket
-      SECRET_KEY: your-secret-jwt-key
+      SECRET_KEY: supersecret
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - minio
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    command: >
+      sh -c "sleep 5 && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend/uploads:/app/uploads
 
