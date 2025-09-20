@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: camper-db
+    environment:
+      POSTGRES_USER: camper
+      POSTGRES_PASSWORD: camperpass
+      POSTGRES_DB: camperdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: camper-minio
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  backend:
+    build: ./backend
+    container_name: camper-backend
+    environment:
+      DATABASE_URL: postgresql://camper:camperpass@db:5432/camperdb
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: camper-bucket
+      SECRET_KEY: your-secret-jwt-key
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - minio
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+volumes:
+  db_data:
+  minio_data:
