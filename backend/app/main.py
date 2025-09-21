@@ -11,6 +11,7 @@ import os
 from . import schemas
 
 from .auth import router as auth_router
+from .users import router as users_router
 
 app = FastAPI()
 
@@ -25,11 +26,7 @@ def startup():
 
 # Include routers
 app.include_router(auth_router)
-
-
-@app.get("/me", response_model=schemas.UserOut)
-def read_me(current_user=Depends(get_current_user)):
-    return current_user
+app.include_router(users_router)
 
 
 # Profilbild Upload
@@ -49,47 +46,6 @@ def upload_profile_image(
     )
     db.commit()
     return {"url": current_user.profile_image}
-
-
-# Standort setzen
-@app.post("/location")
-def update_location(
-    lat: float,
-    lon: float,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    current_user.location = from_shape(Point(lon, lat), srid=4326)
-    db.commit()
-    return {"msg": "Location updated"}
-
-
-# Nearby-Abfrage
-from sqlalchemy import func
-
-
-@app.get("/nearby", response_model=list[UserOut])
-def get_nearby(
-    radius_km: float = 50,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    if not current_user.location:
-        raise HTTPException(status_code=400, detail="Set your location first")
-    radius_m = radius_km * 1000
-    users_with_dist = (
-        db.query(
-            User,
-            func.ST_Distance(User.location, current_user.location).label("distance"),
-        )
-        .filter(
-            User.id != current_user.id,
-            func.ST_DWithin(User.location, current_user.location, radius_m),
-        )
-        .order_by("distance")
-        .all()
-    )
-    return [u for u, dist in users_with_dist]
 
 
 # Chat abrufen
