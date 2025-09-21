@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 
 class UserCreate(BaseModel):
@@ -15,6 +16,7 @@ class UserOut(BaseModel):
     vehicle: Optional[str] = None
     interests: Optional[str] = None
     profile_image: Optional[str] = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -35,7 +37,7 @@ class MessageOut(BaseModel):
     sender_id: int
     receiver_id: int
     content: str
-    timestamp: str
+    timestamp: datetime
 
     class Config:
         from_attributes = True

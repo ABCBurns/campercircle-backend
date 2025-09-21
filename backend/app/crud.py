@@ -45,9 +45,7 @@ def create_message(
     return msg
 
 
-def get_messages_between_users(
-    db: Session, user1_id: int, user2_id: int
-) -> list[models.Message]:
+def get_conversation(db: Session, user1_id: int, user2_id: int) -> list[models.Message]:
     return (
         db.query(models.Message)
         .filter(
