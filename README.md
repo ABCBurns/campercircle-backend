@@ -1,13 +1,14 @@
 # CamperCircle - Backend
 
 
-## start
-```
+## build
+
+```bash
 docker-compose up --build
 ```
 
-## clean all volumes
-```
+clean
+```bash
 docker-compose down -v
 ```
 
