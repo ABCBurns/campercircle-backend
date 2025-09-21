@@ -12,6 +12,10 @@ clean
 docker-compose down -v
 ```
 
+## Test
+MinIO WebUI = http://localhost:9001 (Login: minio/minio123)
+FastAPI API = http://localhost:8000/docs
+
 ## Source Tree
 
 ```
