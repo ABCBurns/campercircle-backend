@@ -12,7 +12,11 @@ from . import crud, schemas, auth
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
-ensure_bucket()
+
+
+@app.on_event("startup")
+def startup():
+    ensure_bucket()
 
 
 @app.post("/auth/register", response_model=schemas.UserOut)
@@ -23,12 +27,27 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
 
+# @app.post("/auth/login", response_model=schemas.Token)
+# def login(user: schemas.UserCreate, db: Session = Depends(get_db)):
+#    db_user = crud.get_user_by_email(db, email=user.email)
+#    if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
+#        raise HTTPException(status_code=401, detail="Invalid credentials")
+#    token = auth.create_access_token({"sub": str(db_user.id)})
+#    return {"access_token": token, "token_type": "bearer"}
+from fastapi.security import OAuth2PasswordRequestForm
+
+
 @app.post("/auth/login", response_model=schemas.Token)
-def login(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_email(db, email=user.email)
-    if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    db_user = crud.get_user_by_email(db, email=form_data.username)
+    if not db_user or not auth.verify_password(
+        form_data.password, db_user.hashed_password
+    ):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = auth.create_access_token({"sub": str(db_user.id)})
+    token = auth.create_access_token({"sub": db_user.email})
     return {"access_token": token, "token_type": "bearer"}
 
 
