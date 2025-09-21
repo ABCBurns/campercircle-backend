@@ -8,10 +8,33 @@ from .schemas import UserOut, MessageOut
 from .auth import get_current_user
 from .utils import s3_client, MINIO_BUCKET, ensure_bucket
 import os
+from . import crud, schemas, auth
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
 ensure_bucket()
+
+
+@app.post("/auth/register", response_model=schemas.UserOut)
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return crud.create_user(db=db, user=user)
+
+
+@app.post("/auth/login", response_model=schemas.Token)
+def login(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_email(db, email=user.email)
+    if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = auth.create_access_token({"sub": str(db_user.id)})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/me", response_model=schemas.UserOut)
+def read_me(current_user=Depends(get_current_user)):
+    return current_user
 
 
 # Profilbild Upload
