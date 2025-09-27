@@ -19,7 +19,11 @@ class UserOut(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        from_attributes = True  # Pydantic can parse SQLAlchemy models directly.
+
+
+class NearbyUser(UserOut):
+    distance_km: float
 
 
 class Login(BaseModel):
