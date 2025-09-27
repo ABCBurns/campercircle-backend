@@ -40,3 +40,18 @@ deps.py - Dependency Injection
 utils.py -  MinIO Bucket & Client
 main.py - FastAPI Endpoints: Profilbild, Location, Nearby, Chat
 ```
+
+## Test Data
+
+10 coordinates, 1 km apart eastward:
+#	Latitude Longitude Email Password Name
+1	52.5200	13.4050 aaa@gmail.com 123 Aaa
+2	52.5200	13.4186 bbb@gmail.com 123 Bbb
+3	52.5200	13.4322 ccc@gmail.com 123 Ccc
+4	52.5200	13.4458
+5	52.5200	13.4594
+6	52.5200	13.4730
+7	52.5200	13.4866
+8	52.5200	13.5002
+9	52.5200	13.5138
+10	52.5200	13.5274

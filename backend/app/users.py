@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
@@ -21,28 +21,50 @@ def update_location(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db),
 ):
-    # Converts (lat, lon) into a PostGIS point (EPSG:4326, WGS84 GPS coordinates).
-    current_user.location = from_shape(Point(lon, lat), srid=4326)
+    # Validate coordinates
+    if not (-90 <= lat <= 90):
+        raise HTTPException(
+            status_code=400, detail="Latitude must be between -90 and 90"
+        )
+    if not (-180 <= lon <= 180):
+        raise HTTPException(
+            status_code=400, detail="Longitude must be between -180 and 180"
+        )
+
+    # Create a POINT as a Geography object (longitude first, then latitude)
+    current_user.location = from_shape(Point(lon, lat), srid=4326)  # PostGIS Geography
+
     db.commit()
-    return {"msg": "Location updated"}
+    db.refresh(current_user)  # Ensure the updated object is loaded
+
+    return {
+        "msg": "Location updated",
+        "location": {
+            "lat": lat,
+            "lon": lon,
+        },
+    }
 
 
 @router.get("/nearby", response_model=list[schemas.NearbyUser])
 def get_nearby(
-    radius_km: float = 50,
+    radius_km: float = Query(50, ge=1, le=500),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db),
 ):
     if not current_user.location:
         raise HTTPException(status_code=400, detail="Set your location first")
-    radius_m = radius_km * 1000
 
-    # Compute distance column in meters
+    radius_m = radius_km * 1000  # convert km -> meters
+
+    # Compute distance column (meters)
     distance_col = func.ST_Distance(models.User.location, current_user.location).label(
-        "distance"
+        "distance_m"
     )
 
-    # Query users within radius, exclude current user
+    # Query nearby users with GIST index efficiency, limit + offset
     users_with_dist = (
         db.query(models.User, distance_col)
         .filter(
@@ -50,18 +72,16 @@ def get_nearby(
             func.ST_DWithin(models.User.location, current_user.location, radius_m),
         )
         .order_by(distance_col)
+        .limit(limit)
+        .offset(offset)
         .all()
     )
 
-    # Build response list
     results: list[schemas.NearbyUser] = []
     for user, distance_m in users_with_dist:
-        # Step 1: map SQLAlchemy User -> UserOut (from_attributes=True for Pydantic v2)
         user_out = schemas.UserOut.model_validate(user, from_attributes=True)
-        # Step 2: build NearbyUser by adding distance_km
         nearby_user = schemas.NearbyUser(
-            **user_out.model_dump(),  # dumps dictionary and unpacks (**) it
-            distance_km=distance_m / 1000,
+            **user_out.model_dump(), distance_km=distance_m / 1000
         )
         results.append(nearby_user)
 

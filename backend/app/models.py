@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Index, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from geoalchemy2 import Geometry
+from geoalchemy2 import Geography
 
 from .database import Base
 
@@ -15,10 +15,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-
     profile_image = Column(String, nullable=True)
-    location = Column(Geometry("POINT", srid=4326), nullable=True)
-
+    location = Column(Geography("POINT", srid=4326), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -28,6 +26,10 @@ class User(Base):
     received_messages = relationship(
         "Message", back_populates="receiver", foreign_keys="Message.receiver_id"
     )
+
+    # GIST index on location
+    # GIST index ensures ST_DWithin and ST_Distance queries scale.
+    # __table_args__ = (Index("idx_users_location", "location", postgresql_using="gist"),)
 
 
 # -------------------------------
