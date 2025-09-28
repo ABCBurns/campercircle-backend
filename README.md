@@ -13,8 +13,20 @@ docker-compose down -v
 ```
 
 ## Test
-MinIO WebUI = http://localhost:9001 (Login: minio/minio123)
-FastAPI API = http://localhost:8000/docs
+MinIO WebUI
+```bash
+http://localhost:9001 (Login: minio/minio123)
+``````
+
+Swagger UI
+```bash
+http://localhost:8000/docs
+```
+
+Query OpenAPI achema 
+```bash
+http://localhost:8000/openapi.json
+```
 
 ## API Tests
 ```bash
